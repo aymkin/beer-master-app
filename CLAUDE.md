@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-BrewMaster AI is a TypeScript/React PWA for brewery inventory management with Google Gemini AI integration. The entire application is contained in a single `index.tsx` file (~1900 lines).
+BrewMaster AI is a TypeScript/React PWA for brewery inventory management with Google Gemini AI integration.
 
 ## Development Commands
 
@@ -19,27 +19,57 @@ npm run preview      # Preview production build
 
 Set `GEMINI_API_KEY` in `.env.local` with a valid Google Gemini API key.
 
+## Project Structure
+
+```
+index.tsx                    # Entry point - Root component with auth routing
+src/
+├── components/
+│   ├── modals/              # Modal dialogs
+│   │   ├── InventoryModal.tsx
+│   │   ├── EmployeeModal.tsx
+│   │   ├── ManualInputModal.tsx
+│   │   ├── RecipeModal.tsx
+│   │   └── ScheduleModal.tsx
+│   ├── BreweryApp.tsx       # Main app layout with all state management
+│   ├── Navigation.tsx       # Sidebar, MobileHeader, PageHeader
+│   ├── NotificationBell.tsx
+│   └── InventoryActionButtons.tsx
+├── pages/
+│   ├── AuthPage.tsx         # Login/registration
+│   ├── DashboardPage.tsx    # Tasks and activity overview
+│   ├── InventoryPage.tsx    # Stock management table
+│   ├── ProductionPage.tsx   # Recipes and calendar schedule
+│   ├── AIAssistantPage.tsx  # Gemini chat interface
+│   ├── IntegrationsPage.tsx # Export/sync placeholders
+│   └── EmployeesPage.tsx    # User management (admin only)
+├── hooks/
+│   └── useStickyState.ts    # localStorage persistence hook
+├── types/
+│   └── index.ts             # All TypeScript interfaces
+├── config/
+│   └── aiTools.ts           # Gemini AI function declarations
+└── data/
+    └── initialData.ts       # Initial inventory, recipes, tasks
+```
+
 ## Architecture
 
-### Monolithic Single-File Structure
+### State Management
 
-All React components, types, and logic are in `index.tsx`. Key sections:
-- Type definitions (InventoryItem, Recipe, ScheduledBrew, UserAccount, etc.)
-- Custom hooks (`useStickyState` for localStorage persistence)
-- AI configuration with Gemini function calling
-- Components: Root (auth), BreweryApp (main), NotificationBell, InventoryActionButtons
+All application state lives in `src/components/BreweryApp.tsx`. State is persisted to localStorage via the `useStickyState` hook with brewery-scoped keys: `{breweryName}_{dataType}`.
 
 ### Multi-Tenant Data Model
 
-Data is scoped per brewery using localStorage keys: `{breweryName}_{dataType}`. Each brewery has isolated inventory, recipes, schedules, and users.
+Each brewery has isolated data in localStorage. Users authenticate with brewery name + username + password.
 
 ### Authentication & Roles
 
-Simple credential-based auth with 4 roles: admin, brewer, assistant, tester. Role-based access controls feature visibility.
+4 roles with different permissions: admin, brewer, assistant, tester. Role checks are inline in components.
 
 ### AI Integration
 
-Google Gemini 2.5 Flash with function calling tools:
+Google Gemini 2.5 Flash with function calling in `src/pages/AIAssistantPage.tsx`. Tools defined in `src/config/aiTools.ts`:
 - `updateInventory` - Modify inventory quantities
 - `getInventory` - Query current stock levels
 
@@ -49,15 +79,15 @@ AI uses Russian language system prompts. Conversation context limited to last 6 
 
 - Service Worker (`sw.js`) for offline caching
 - `manifest.json` for installable app metadata
-- Before-install-prompt handling for app installation
+- Before-install-prompt handling in BreweryApp
 
 ### Dependencies
 
-React, React-DOM, Lucide icons, and Tailwind CSS are served via CDN (not bundled). The `@google/genai` package is the only npm dependency used at runtime.
+React, React-DOM, Lucide icons, and Tailwind CSS are served via CDN. The `@google/genai` package is bundled.
 
 ## Key Business Logic
 
-- **Inventory Reservation**: Quantities are reserved when brews are scheduled
-- **Low-Stock Alerts**: Triggered when items fall below minimum level thresholds
-- **Audit Logging**: All inventory changes are logged with timestamps and user attribution
+- **Inventory Reservation**: Quantities reserved when brews are scheduled (calculated in `BreweryApp.tsx`)
+- **Low-Stock Alerts**: Triggered when available quantity falls below `minLevel`
+- **Audit Logging**: All inventory changes logged with timestamps and user attribution
 - **Production Workflow**: Check ingredients → Execute brew → Update inventory → Log action
